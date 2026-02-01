@@ -2,18 +2,22 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 interface DiaryEntry {
   id: string;
-  date: string;
-  fact: string;
-  feeling: string;
-  thought: string;
-  draft: string;
+  created_at: string;
+  content: {
+    fact: string;
+    feeling: string;
+    thought: string;
+    draft: string;
+  };
 }
 
 export default function HomePage() {
   const [recentEntries, setRecentEntries] = useState<DiaryEntry[]>([]);
+  const [loading, setLoading] = useState(true);
   const today = new Date().toLocaleDateString("ja-JP", {
     year: "numeric",
     month: "long",
@@ -22,12 +26,20 @@ export default function HomePage() {
   });
 
   useEffect(() => {
-    // モック: LocalStorageから過去の日記を取得
-    const stored = localStorage.getItem("diary-entries");
-    if (stored) {
-      const entries = JSON.parse(stored) as DiaryEntry[];
-      setRecentEntries(entries.slice(0, 5));
-    }
+    const fetchEntries = async () => {
+      const { data, error } = await supabase
+        .from("diary_entries")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(5);
+
+      if (!error && data) {
+        setRecentEntries(data);
+      }
+      setLoading(false);
+    };
+
+    fetchEntries();
   }, []);
 
   return (
@@ -104,7 +116,11 @@ export default function HomePage() {
         <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">
           最近の日記
         </h2>
-        {recentEntries.length > 0 ? (
+        {loading ? (
+          <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-6 text-center">
+            <p className="text-slate-500 dark:text-slate-400">読み込み中...</p>
+          </div>
+        ) : recentEntries.length > 0 ? (
           <div className="space-y-3">
             {recentEntries.map((entry) => (
               <Link
@@ -113,10 +129,14 @@ export default function HomePage() {
                 className="block bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors"
               >
                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                  {entry.date}
+                  {new Date(entry.created_at).toLocaleDateString("ja-JP", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
                 </p>
                 <p className="text-slate-800 dark:text-slate-100 mt-1 line-clamp-2">
-                  {entry.fact || entry.feeling || "（内容なし）"}
+                  {entry.content?.fact || entry.content?.feeling || "（内容なし）"}
                 </p>
               </Link>
             ))}

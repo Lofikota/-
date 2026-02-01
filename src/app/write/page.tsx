@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 const INPUT_FIELDS = [
   {
@@ -58,25 +59,26 @@ export default function WritePage() {
 
     setIsSubmitting(true);
 
-    // モック: LocalStorageに保存
-    const id = Date.now().toString();
-    const entry = {
-      id,
-      date: new Date().toLocaleDateString("ja-JP", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      }),
+    // Supabaseに保存
+    const { data, error } = await supabase
+      .from("diary_entries")
+      .insert({
+        content: formData,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error saving entry:", error);
+      setIsSubmitting(false);
+      return;
+    }
+
+    // 視点提示画面用のデータをlocalStorageに保存（一時的）
+    localStorage.setItem("current-entry", JSON.stringify({
+      id: data.id,
       ...formData,
-    };
-
-    const stored = localStorage.getItem("diary-entries");
-    const entries = stored ? JSON.parse(stored) : [];
-    entries.unshift(entry);
-    localStorage.setItem("diary-entries", JSON.stringify(entries));
-
-    // モック: 視点提示画面用のデータも保存
-    localStorage.setItem("current-entry", JSON.stringify(entry));
+    }));
 
     router.push("/perspective");
   };
