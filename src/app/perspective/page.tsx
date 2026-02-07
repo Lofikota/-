@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { supabase } from "@/lib/supabase";
 
 interface DiaryEntry {
   id: string;
@@ -69,6 +70,23 @@ export default function PerspectivePage() {
       // モック: 視点生成（実際はAI APIを呼び出す）
       const mockPerspective = generateMockPerspective(parsedEntry);
       setPerspective(mockPerspective);
+
+      // Supabaseに視点データを保存
+      if (parsedEntry.id) {
+        supabase
+          .from("perspectives")
+          .insert({
+            diary_entry_id: parsedEntry.id,
+            acceptance: mockPerspective.acceptance,
+            confirm_question: mockPerspective.confirmQuestion,
+            perspectives: mockPerspective.perspectives,
+            deep_question: mockPerspective.deepQuestion,
+            value_tag: mockPerspective.valueTag,
+          })
+          .then(({ error }) => {
+            if (error) console.error("Error saving perspective:", error);
+          });
+      }
     } else {
       router.push("/write");
     }

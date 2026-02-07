@@ -1,29 +1,45 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 interface ValueTag {
   id: string;
   label: string;
   answer?: string;
-  createdAt: string;
+  created_at: string;
 }
 
 export default function DictionaryPage() {
   const [tags, setTags] = useState<ValueTag[]>([]);
   const [selectedTag, setSelectedTag] = useState<ValueTag | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const stored = localStorage.getItem("value-tags");
-    if (stored) {
-      setTags(JSON.parse(stored) as ValueTag[]);
-    }
+    const fetchTags = async () => {
+      const { data, error } = await supabase
+        .from("value_tags")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (!error && data) {
+        setTags(data);
+      }
+      setLoading(false);
+    };
+
+    fetchTags();
   }, []);
 
-  const handleDeleteTag = (id: string) => {
-    const updatedTags = tags.filter((tag) => tag.id !== id);
-    setTags(updatedTags);
-    localStorage.setItem("value-tags", JSON.stringify(updatedTags));
+  const handleDeleteTag = async (id: string) => {
+    const { error } = await supabase.from("value_tags").delete().eq("id", id);
+
+    if (error) {
+      console.error("Error deleting value tag:", error);
+      return;
+    }
+
+    setTags((prev) => prev.filter((tag) => tag.id !== id));
     setSelectedTag(null);
   };
 
@@ -73,7 +89,11 @@ export default function DictionaryPage() {
       </div>
 
       {/* タグ一覧 */}
-      {tags.length > 0 ? (
+      {loading ? (
+        <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-6 text-center">
+          <p className="text-slate-500 dark:text-slate-400">読み込み中...</p>
+        </div>
+      ) : tags.length > 0 ? (
         <div className="space-y-3">
           {tags.map((tag) => (
             <button
@@ -98,7 +118,7 @@ export default function DictionaryPage() {
                     </span>
                   </div>
                   <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                    {formatDate(tag.createdAt)}
+                    {formatDate(tag.created_at)}
                   </p>
                 </div>
                 <svg
@@ -172,7 +192,7 @@ export default function DictionaryPage() {
             </div>
 
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-              発見日: {formatDate(selectedTag.createdAt)}
+              発見日: {formatDate(selectedTag.created_at)}
             </p>
 
             {selectedTag.answer && (

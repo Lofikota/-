@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { supabase } from "@/lib/supabase";
 
 interface PerspectiveData {
   acceptance: string;
@@ -36,17 +37,21 @@ export default function DeepDivePage() {
 
     setIsSaving(true);
 
-    // モック: 価値観タグを保存
-    const stored = localStorage.getItem("value-tags");
-    const tags = stored ? JSON.parse(stored) : [];
-    const newTag = {
-      id: Date.now().toString(),
+    // Supabaseに価値観タグを保存
+    const entryData = localStorage.getItem("current-entry");
+    const diaryEntryId = entryData ? JSON.parse(entryData).id : null;
+
+    const { error } = await supabase.from("value_tags").insert({
       label: perspective.valueTag,
-      answer: answer,
-      createdAt: new Date().toISOString(),
-    };
-    tags.unshift(newTag);
-    localStorage.setItem("value-tags", JSON.stringify(tags));
+      answer: answer || null,
+      diary_entry_id: diaryEntryId,
+    });
+
+    if (error) {
+      console.error("Error saving value tag:", error);
+      setIsSaving(false);
+      return;
+    }
 
     // 完了後、辞書画面へ
     router.push("/dictionary");
